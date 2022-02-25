@@ -1,0 +1,420 @@
+﻿In this post-workshop exercise, you will gain hands-on experience on appending, merging, and reshaping datasets.
+First, we need to import datasets we need for this exercise and save them locally.
+The following datasets are from SSCC (Social Science Computing Cooperatve) at University of Wisconsin-Madison. 
+These datasets are the ACS "source" data created by the Census Bureau and used by SSCC as sample datasets
+You can find more sample datasets to play with from this webpage - https://ssc.wisc.edu/sscc/stata/dws/.
+As they are all online datasets, they can easily imported into STATA using the syntax `use' + url.
+
+. /* 
+> Import Data
+> */
+. 
+. * Adult dataset - the unit level of data is household by person
+. use "https://ssc.wisc.edu/sscc/stata/dws/2000_acs_adults.dta", clear
+
+. gen adult = 1
+
+. save 2000_acs_adult, replace
+file 2000_acs_adult.dta saved
+
+
+. * Children dataset - the unit level of data is household by person
+. use "https://ssc.wisc.edu/sscc/stata/dws/2000_acs_children.dta", clear
+
+. gen adult = 0
+
+. save 2000_acs_children, replace
+file 2000_acs_children.dta saved
+
+
+. * Household dataset - the unit level of data is household
+. use "https://ssc.wisc.edu/sscc/stata/dws/2000_acs_households.dta", clear
+
+. save 2000_acs_household, replace
+file 2000_acs_household.dta saved
+
+. 
+. * Education dataset - tthe unit level of data is household by person
+. use "https://ssc.wisc.edu/sscc/stata/dws/2000_acs_education.dta", clear
+
+. save 2000_acs_education, replace
+file 2000_acs_education.dta saved
+
+
+. /*
+> Merge and Append
+> */
+
+Now we explore how to append datasets.Using `append', we stack multiple datasets all together into one dataset. 
+
+. ** Append datasets **
+. use 2000_acs_adult, clear
+
+. append using 2000_acs_children
+(label maritalStatusLabel already defined)
+(label raceLabel already defined)
+(label eduLabel already defined)
+
+. sort household person
+
+. save 2000_acs_all, replace
+file 2000_acs_all.dta saved
+
+What if we want to append more than two datasets? To do the exercise, We first split the datasets into four groups - Person 1, Person 2, Person 3, Others
+
+.* Append more than two datasets
+
+. * Person 1
+. use 2000_acs_all, clear
+
+. keep if person == 1
+(16,845 observations deleted)
+
+. save 2000_acs_p1, replace
+file 2000_acs_p1.dta saved
+
+. * Person 2
+. use 2000_acs_all, clear
+
+. keep if person == 2
+(19,624 observations deleted)
+
+. save 2000_acs_p2, replace
+file 2000_acs_p2.dta saved
+
+. * Person 3
+. use 2000_acs_all, clear
+
+. keep if person == 3
+(23,036 observations deleted)
+
+. save 2000_acs_p3, replace
+file 2000_acs_p3.dta saved
+
+. * Others
+. use 2000_acs_all, clear
+
+. keep if person > 3
+(22,725 observations deleted)
+
+. save 2000_acs_p4, replace
+file 2000_acs_p4.dta saved
+
+Now we append all datasets saved above with the current master file `2000_acs_p4' and by using `generate(filenum)', we create an string variable that tells us which dataset the observation is from.
+
+. * Append all datasets and generate an identifier that tells us which dataset the observation is from.
+. append using 2000_acs_p1 2000_acs_p2 2000_acs_p3, generate(filenum)
+(label eduLabel already defined)
+(label raceLabel already defined)
+(label maritalStatusLabel already defined)
+(label eduLabel already defined)
+(label raceLabel already defined)
+(label maritalStatusLabel already defined)
+(label eduLabel already defined)
+(label raceLabel already defined)
+(label maritalStatusLabel already defined)
+
+We can see the number of observations in each dataset using `tab'. Master refers to master file.
+
+. tab filenum
+
+    Dataset source |      Freq.     Percent        Cum.
+-------------------+-----------------------------------
+            Master |      4,685       17.09       17.09
+Appended dataset 1 |     10,565       38.54       55.64
+Appended dataset 2 |      7,786       28.41       84.04
+Appended dataset 3 |      4,374       15.96      100.00
+-------------------+-----------------------------------
+             Total |     27,410      100.00
+
+
+In this following section, we would like to merge datasets. Using `merge', we merge two datasets into one using identifiers. We need to first identify one or more identifiers, which are the key variables that are in both the master file and the local file we are merging with. One important step is to check whether the identifiers are uniquely identifed in both master file and local file.
+
+. ** Merge datasets **
+
+The first example is to merge the household dataset that documents total income per household with our household-by-person dataset stored as `2000_acs_all'. 
+Household is not uniquely identified in the master file `2000_acs_all.dta' as the unit level is household-by-person. However, household is uniquely identified in the local file `2000_acs_household' as it records the total income per household.
+We use `merge m:1' to tell the machine that we are merging two datasets using `household'; the same value of `household' can appear multiples times in the master file but only appear once in local file.
+
+. * Identifiers not unique in master but unique in local file
+. use 2000_acs_all, clear
+
+. merge m:1 household using 2000_acs_household
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                            27,410  (_merge==3)
+    -----------------------------------------
+
+. * Use `list in [a]/[b]' to get a preview of row a to row b in the datasets
+. list in 1/5
+
+     +----------------------------------------------------------------------------------------------------------------------------------------+
+     | househ~d   person   age    race   maritalStatus                      edu   income   female   hispanic   adult   househ~e        _merge |
+     |----------------------------------------------------------------------------------------------------------------------------------------|
+  1. |       37        1    20   White   Never married   Some college, >=1 year    10000        1          0       1      20000   Matched (3) |
+  2. |       37        2    19   White   Never married   Some college, >=1 year     5300        1          0       1      20000   Matched (3) |
+  3. |       37        3    19   Black   Never married   Some college, >=1 year     4700        1          0       1      20000   Matched (3) |
+  4. |      241        1    50   White   Never married           Maser's degree    32500        1          0       1      32500   Matched (3) |
+  5. |      242        1    29   White   Never married        Bachelor's degree    30000        1          0       1      30000   Matched (3) |
+     +----------------------------------------------------------------------------------------------------------------------------------------+
+
+
+What if the identifier is uniquely identified in both local file and master file? To do the excercise, we use `2000_acs_all' again but drop the education variable and merge it with education datasets. The pair `household' and `person' is uniquely identified in the dataset as that's the unit level. We use `merge 1:1' to tell the machine that household-person pair is uniquely identified in both master and local file
+
+. * Identifier unique in both local file and master file
+. use 2000_acs_all, clear
+
+. drop edu
+
+. merge 1:1 household person using 2000_acs_education
+(label eduLabel already defined)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                            27,410  (_merge==3)
+    -----------------------------------------
+
+. list in 1/5
+
+     +-----------------------------------------------------------------------------------------------------------------------------+
+     | househ~d   person   age    race   maritalStatus   income   female   hispanic   adult                      edu        _merge |
+     |-----------------------------------------------------------------------------------------------------------------------------|
+  1. |       37        1    20   White   Never married    10000        1          0       1   Some college, >=1 year   Matched (3) |
+  2. |       37        2    19   White   Never married     5300        1          0       1   Some college, >=1 year   Matched (3) |
+  3. |       37        3    19   Black   Never married     4700        1          0       1   Some college, >=1 year   Matched (3) |
+  4. |      241        1    50   White   Never married    32500        1          0       1           Maser's degree   Matched (3) |
+  5. |      242        1    29   White   Never married    30000        1          0       1        Bachelor's degree   Matched (3) |
+     +-----------------------------------------------------------------------------------------------------------------------------+
+
+
+What if the identifier is uniquely identified in master file but not in local file? We now start with the `2000_acs_household' file and we want to merge it with `2000_acs_all' so we know not only how much a household in total earn, but also how much each person in the household earn.
+
+.* Identifier unique in master file but not in local file
+. use 2000_acs_household, clear
+
+. * Use `keepusing' to include the variables we need from the local file - as an example, we pick `person`, `age` and `income' variable.
+. merge 1:m household using 2000_acs_all, keepusing(person age income)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                            27,410  (_merge==3)
+    -----------------------------------------
+
+. sort household person
+
+. list in 1/5
+
+     +-----------------------------------------------------------+
+     | househ~d   househ~e   person   age   income        _merge |
+     |-----------------------------------------------------------|
+  1. |       37      20000        1    20    10000   Matched (3) |
+  2. |       37      20000        2    19     5300   Matched (3) |
+  3. |       37      20000        3    19     4700   Matched (3) |
+  4. |      241      32500        1    50    32500   Matched (3) |
+  5. |      242      30000        1    29    30000   Matched (3) |
+     +-----------------------------------------------------------+
+
+. * Drop the automatically generated variable `_merge' that indicates whether the observation is matched or not.
+. drop _merge
+
+. * Save this merged dataset for next excercise.
+. save 2000_acs_merge, replace
+file 2000_acs_merge.dta saved
+
+
+. /*
+> Reshape
+> */
+
+Now we show examples for reshaping the datasets. There are two types of datasets - long dataset versus wide dataset. Using `reshape', we can transform between two types of datasets.
+
+. * Long to Wide
+. use 2000_acs_merge, clear
+
+. list in 1/5
+
+     +---------------------------------------------+
+     | househ~d   househ~e   person   age   income |
+     |---------------------------------------------|
+  1. |       37      20000        1    20    10000 |
+  2. |       37      20000        2    19     5300 |
+  3. |       37      20000        3    19     4700 |
+  4. |      241      32500        1    50    32500 |
+  5. |      242      30000        1    29    30000 |
+     +---------------------------------------------+
+
+We can see that the unit level of data is household-by-person. Both `age' and `income' are at unit level. `householdIncome' is at group level (at household level)
+This dataset is a long dataset. The group level `i' is household. The individual level `j' is person.
+We want to reshape the dataset from long format to wide format so that the unit level is group level (at household level).
+The largest households have 16 persons in total. Therefore, using `reshape wide`, `age' and `income' will be transformed to age1-age16 and income1-income16. Comparatively, `householdIncome' is at household level and therefore it won't be transformed. `person' will be dropped as there is no individual level anymore.
+
+. reshape wide age income, i(household) j(person)
+(j = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
+
+Data                               Long   ->   Wide
+-----------------------------------------------------------------------------
+Number of observations           27,410   ->   10,565      
+Number of variables                   5   ->   34          
+j variable (16 values)           person   ->   (dropped)
+xij variables:
+                                    age   ->   age1 age2 ... age16
+                                 income   ->   income1 income2 ... income16
+-----------------------------------------------------------------------------
+
+. * Print out the summary statistics for each variables.
+. summarize
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+   household |     10,565      622241    357359.1         37    1236779
+        age1 |     10,565    49.17984    17.21509         15         93
+     income1 |     10,547    38781.44    46922.62          0     720000
+        age2 |      7,786    41.19445    18.67976          0         93
+     income2 |      7,127    20138.52    28216.14          0     468200
+-------------+---------------------------------------------------------
+        age3 |      4,374    16.99474    14.71738          0         93
+     income3 |      2,119     10502.9    15723.64          0     318000
+        age4 |      2,689    13.44292    12.88698          0         93
+     income4 |        863    9859.768    15331.71          0     150000
+        age5 |      1,210     13.2314    14.83037          0         93
+-------------+---------------------------------------------------------
+     income5 |        326    10267.22    12853.82          0      76000
+        age6 |        450    13.73778    15.67082          0         87
+     income6 |        134     13126.6    30644.76          0     322800
+        age7 |        177    13.35028    14.43919          0         64
+     income7 |         56    11678.04    17463.44          0      91000
+-------------+---------------------------------------------------------
+        age8 |         81     13.7037    15.08264          0         82
+     income8 |         29    5570.345    7152.839          0      21000
+        age9 |         34    16.67647    14.74371          0         73
+     income9 |         15    11954.67    17712.42          0      56000
+       age10 |         21    17.90476    14.34888          0         55
+-------------+---------------------------------------------------------
+    income10 |         10        9693    9442.009          0      27000
+       age11 |         11    18.36364    17.43142          0         49
+    income11 |          4     15377.5    18519.77          0      37200
+       age12 |          8      16.875    15.36636          1         38
+    income12 |          4       17475    19065.74          0      37500
+-------------+---------------------------------------------------------
+       age13 |          1          21           .         21         21
+    income13 |          1       16700           .      16700      16700
+       age14 |          1          35           .         35         35
+    income14 |          1       11010           .      11010      11010
+       age15 |          1          22           .         22         22
+-------------+---------------------------------------------------------
+    income15 |          1           0           .          0          0
+       age16 |          1           3           .          3          3
+    income16 |          0
+householdI~e |     10,565    55814.16    57884.94          0     936400
+
+We can tell from the summary statistics that most housholds have at most 2 persons and therefore age3-age16 and income3-income16 contain many missing values.
+
+Now that we check the wide format of the original datasets, we want to transform back to the long format as the wide dataset doesn't work well for data analysis. 
+To do so, we use `reshape long'. In the wide dataset, the unit level is household level. `age' and `income' variables have suffix from 1 to 16. 
+We want to reshape the dataset to long format so age1-age16 will be transformed to age with a new identifier that indicates the individual level. We name this new identifier variable as `id'.
+
+. * Wide to Long
+. reshape long age income, i(household) j(id)
+(j = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
+
+Data                               Wide   ->   Long
+-----------------------------------------------------------------------------
+Number of observations           10,565   ->   169,040     
+Number of variables                  34   ->   5           
+j variable (16 values)                    ->   id
+xij variables:
+                    age1 age2 ... age16   ->   age
+           income1 income2 ... income16   ->   income
+-----------------------------------------------------------------------------
+
+Now we get rid fo suffix for `age' and `income'. However, the sample size is much larger than the original. 
+Using `reshape long`, it assumes each household has 16 persons in total, which is not the case.
+If we tabulate `id' and then tabulate `id' with age not missing, we can see that many households only have 2 person at most.
+
+. tab id
+
+     Person |
+  number in |
+sample unit |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |     10,565        6.25        6.25
+          2 |     10,565        6.25       12.50
+          3 |     10,565        6.25       18.75
+          4 |     10,565        6.25       25.00
+          5 |     10,565        6.25       31.25
+          6 |     10,565        6.25       37.50
+          7 |     10,565        6.25       43.75
+          8 |     10,565        6.25       50.00
+          9 |     10,565        6.25       56.25
+         10 |     10,565        6.25       62.50
+         11 |     10,565        6.25       68.75
+         12 |     10,565        6.25       75.00
+         13 |     10,565        6.25       81.25
+         14 |     10,565        6.25       87.50
+         15 |     10,565        6.25       93.75
+         16 |     10,565        6.25      100.00
+------------+-----------------------------------
+      Total |    169,040      100.00
+
+. tab id if age != .
+
+     Person |
+  number in |
+sample unit |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |     10,565       38.54       38.54
+          2 |      7,786       28.41       66.95
+          3 |      4,374       15.96       82.91
+          4 |      2,689        9.81       92.72
+          5 |      1,210        4.41       97.13
+          6 |        450        1.64       98.77
+          7 |        177        0.65       99.42
+          8 |         81        0.30       99.72
+          9 |         34        0.12       99.84
+         10 |         21        0.08       99.92
+         11 |         11        0.04       99.96
+         12 |          8        0.03       99.99
+         13 |          1        0.00       99.99
+         14 |          1        0.00       99.99
+         15 |          1        0.00      100.00
+         16 |          1        0.00      100.00
+------------+-----------------------------------
+      Total |     27,410      100.00
+
+Therefore, we drop the observations with age missing to leave out the data entries with unnecessary information.
+
+. drop if age ==.
+(141,630 observations deleted)
+
+. summarize
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+   household |     27,410    624436.9    355219.6         37    1236779
+          id |     27,410    2.241627    1.414713          1         16
+         age |     27,410    35.67435    22.34652          0         93
+      income |     21,237    27766.47    39176.14          0     720000
+householdI~e |     27,410    62483.04     60372.2          0     936400
+
+ 
+As comparison, we import `2000_acs_merge' again and compare the summary statistics to see whether we succesfully transformed back to the original dataset.
+
+. * Re-import `2000_acs_merge' for comparison.
+. use 2000_acs_merge, clear
+
+. summarize
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+   household |     27,410    624436.9    355219.6         37    1236779
+householdI~e |     27,410    62483.04     60372.2          0     936400
+      person |     27,410    2.241627    1.414713          1         16
+         age |     27,410    35.67435    22.34652          0         93
+      income |     21,237    27766.47    39176.14          0     720000
+
+
+We have the exact same distribution for `age' and `income'. Task done!
