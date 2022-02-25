@@ -15,3 +15,9 @@ email ccss-ResearchSupport@cornell.edu if you would like access to software.
 
 How to Open Stata Sample Dataset:  
 https://docs.google.com/document/d/1bOIP_n-HDVhS02MqhXVxwxuQECp8p9-K4SZN-TdBpBI/edit?usp=sharing
+
+Post Workshop Slides:
+https://docs.google.com/presentation/d/1_6sBhQFGJVVthD54k-ld38W0O8PHwy-Y/edit?usp=sharing&ouid=117340435050962348521&rtpof=true&sd=true
+
+Post Workshop Code:
+https://drive.google.com/file/d/1L35IT-2Z6q7M5GsJ7mJ0uYB0czwgt4Q6/view?usp=sharing
